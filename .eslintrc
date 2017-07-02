@@ -1,0 +1,6 @@
+{
+    "extends": "webbylab",
+    "rules": {
+        "key-spacing": "off"
+    }
+}
