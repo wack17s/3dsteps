@@ -1,6 +1,7 @@
 {
     "extends": "webbylab",
     "rules": {
-        "key-spacing": "off"
+        "key-spacing": "off",
+        "more/no-numeric-endings-for-variables": "off"
     }
 }

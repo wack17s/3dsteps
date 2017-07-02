@@ -1,11 +1,11 @@
 import React from 'react';
 
-import Game from './shared/Game.js';
+import MainPage from './shared/MainPage.js';
 
 export default class App extends React.Component {
     render() {
         return (
-            <Game />
+            <MainPage />
         );
     }
 }
