@@ -1,8 +1,8 @@
 import React, { Component } from 'react';
 import { TabNavigator }     from 'react-navigation';
 
-import CameraRotation from './CameraRotation.js';
-import ObjectRotation from './ObjectRotation.js';
+import CameraRotation from './components/CameraRotation.js';
+import ObjectRotation from './components/ObjectRotation.js';
 
 const Tabs = TabNavigator(
     {

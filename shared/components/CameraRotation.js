@@ -4,13 +4,15 @@ import Expo                 from 'expo';
 import ExpoTHREE            from 'expo-three';
 import * as THREE           from 'three';
 
+import { calcDistance } from '../utils/functions.js';
+
 import Styles from './CameraRotationStyles.js';
 
 console.disableYellowBox = true;
 
 export default class CameraRotation extends Component {
     state = {
-        zoom: 3,
+        zoom: 5,
         lon: 0,
         lat: 0,
         fromXY: undefined,
@@ -56,10 +58,13 @@ export default class CameraRotation extends Component {
 
             requestAnimationFrame(render);
 
-            cube.rotation.x = this.state.lat;
-            cube.rotation.y = this.state.lon;
+            const lat = Math.max(-85, Math.min(85, this.state.lat));
+            const phi = THREE.Math.degToRad(90 - lat);
+            const theta = THREE.Math.degToRad(this.state.lon);
 
-            camera.position.z = zoom;
+            camera.position.x = zoom * Math.sin(phi) * Math.cos(theta);
+            camera.position.y = zoom * Math.cos(phi);
+            camera.position.z = zoom * Math.sin(phi) * Math.sin(theta);
 
             camera.lookAt(scene.position);
 
@@ -76,18 +81,21 @@ export default class CameraRotation extends Component {
     }
 
     handleMove = (e) => {
-        const { locationX, locationY } = e.nativeEvent;
+        const { locationX, locationY, touches } = e.nativeEvent;
         const { lat, lon, fromXY = [], valueXY = [] } = this.state;
 
-        if (!this.state.fromXY) {
+        if (touches.length === 2) {
+            this.processPinch(touches[0].pageX, touches[0].pageY,
+                touches[1].pageX, touches[1].pageY);
+        } else if (!this.state.fromXY) {
             this.setState({
                 fromXY: [locationX, locationY],
                 valueXY: [lon, lat]
             });
         } else {
             this.setState({
-                lon: valueXY[0] + (locationX - fromXY[0]) / 40,
-                lat: valueXY[1] + (locationY - fromXY[1]) / 40
+                lon: valueXY[0] + (locationX - fromXY[0]) / 2,
+                lat: valueXY[1] + (locationY - fromXY[1]) / 2
             });
         }
     }
@@ -98,6 +106,17 @@ export default class CameraRotation extends Component {
 
     handleZoomOut = () => {
         this.setState({ zoom: ++this.state.zoom });
+    }
+
+    processPinch(x1, y1, x2, y2) {
+        const { isZooming, initialDistance, zoom } = this.state;
+        const distance = calcDistance(x1, y1, x2, y2);
+
+        if (!isZooming) {
+            this.setState({ isZooming: true, initialDistance: distance });
+        } else if (Math.abs(distance - initialDistance) > 5) {
+            this.setState({ zoom: distance > initialDistance ? zoom - 0.1 : zoom + 0.1, initialDistance: distance });
+        }
     }
 
     panResponder = PanResponder.create({
