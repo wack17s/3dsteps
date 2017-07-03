@@ -1,8 +1,8 @@
 import React, { Component } from 'react';
-import { View, TouchableWithoutFeedback, Text, PanResponder } from 'react-native';
 import Expo                 from 'expo';
 import ExpoTHREE            from 'expo-three';
 import * as THREE           from 'three';
+import { View, TouchableWithoutFeedback, Text, PanResponder } from 'react-native';
 
 import { calcDistance } from '../utils/functions.js';
 

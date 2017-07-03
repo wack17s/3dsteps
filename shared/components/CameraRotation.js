@@ -1,8 +1,8 @@
 import React, { Component } from 'react';
+import Expo from 'expo';
+import ExpoTHREE from 'expo-three';
+import * as THREE from 'three';
 import { View, TouchableWithoutFeedback, Text, PanResponder } from 'react-native';
-import Expo                 from 'expo';
-import ExpoTHREE            from 'expo-three';
-import * as THREE           from 'three';
 
 import { calcDistance } from '../utils/functions.js';
 
@@ -12,7 +12,8 @@ console.disableYellowBox = true;
 
 export default class CameraRotation extends Component {
     state = {
-        zoom: 5,
+        zoom: 1200,
+        zoomZ: 0,
         lon: 0,
         lat: 0,
         fromXY: undefined,
@@ -20,41 +21,76 @@ export default class CameraRotation extends Component {
     }
 
     handleGLContextCreate = async (gl) => {
+        var mixer1, mixer2, mesh1, mesh2;
+
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(
-            100, gl.drawingBufferWidth / gl.drawingBufferHeight, 1, 1000);
+        const camera = new THREE.PerspectiveCamera(50, gl.drawingBufferWidth / gl.drawingBufferHeight, 1, 10000);
+
+        const cameraTarget = new THREE.Vector3(0, 150, 0);
+
+
 
         const renderer = ExpoTHREE.createRenderer({ gl });
 
+        renderer.setClearColor(0xf0f0f0);
         renderer.setSize(gl.drawingBufferWidth, gl.drawingBufferHeight);
 
-        const geometry = new THREE.CubeGeometry(1, 1, 1);
-        const material = new THREE.MeshBasicMaterial({
-            map: await ExpoTHREE.createTextureAsync({
-                asset: Expo.Asset.fromModule(require('../assets/redSquare.png'))
-            })
+        const light1 = new THREE.DirectionalLight(0xefefff, 2.3);
+
+        light1.position.set(1, 1, 1).normalize();
+        scene.add(light1);
+
+        const light2 = new THREE.DirectionalLight(0xffefef, 1.5);
+
+        light2.position.set(-1, -1, -1).normalize();
+        scene.add(light2);
+
+        const loader = new THREE.JSONLoader();
+
+        loader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/models/animated/horse.js', geometry => {
+            const material = new THREE.MeshLambertMaterial({
+                vertexColors: THREE.FaceColors,
+                morphTargets: true,
+                overdraw: 0.5
+            });
+
+            mesh1 = new THREE.Mesh(geometry, material);
+
+            mesh1.scale.set(1.5, 1.5, 1.5);
+            scene.add(mesh1);
+
+            mesh2 = new THREE.Mesh(geometry, material);
+
+            mesh2.scale.set(1.5, 1.5, 1.5);
+            scene.add(mesh2);
+
+            mixer1 = new THREE.AnimationMixer(mesh1);
+
+            const clip1 = THREE.AnimationClip.CreateFromMorphTargetSequence('gallop', geometry.morphTargets, 30);
+
+            mixer1.clipAction(clip1).setDuration(1).play();
+
+            mixer2 = new THREE.AnimationMixer(mesh2);
+
+            const clip2 = THREE.AnimationClip.CreateFromMorphTargetSequence('gallop', geometry.morphTargets, 30);
+
+            mixer2.clipAction(clip2).setDuration(1).play();
         });
-        const cube = new THREE.Mesh(geometry, material);
 
-        const light = new THREE.PointLight(0xffffff, 1, 100);
-
-        light.position.set(0, 10, 0);
-        light.castShadow = true;
-        scene.add(light);
-
-        light.shadow.mapSize.width = 512;
-        light.shadow.mapSize.height = 512;
-        light.shadow.camera.near = 0.5;
-        light.shadow.camera.far = 500;
-
-        scene.add(cube);
-
-        const helper = new THREE.CameraHelper(light.shadow.camera);
-
-        scene.add(helper);
+        let prevTime = Date.now();
 
         const render = () => {
-            const { zoom } = this.state;
+            const { zoom, zoomZ } = this.state;
+
+            if (mixer1 && mixer2) {
+                const time = Date.now();
+
+                mixer1.update((time - prevTime) * 0.001);
+
+                mixer2.update((time - prevTime) * 0.002);
+
+                prevTime = time;
+            }
 
             requestAnimationFrame(render);
 
@@ -62,11 +98,21 @@ export default class CameraRotation extends Component {
             const phi = THREE.Math.degToRad(90 - lat);
             const theta = THREE.Math.degToRad(this.state.lon);
 
+            mesh1.position.x = 200;
+            mesh1.position.z = 1000;
+
+            this.setState({ zoomZ: this.state.zoomZ + 2 });
+
+            mesh2.position.z += 2;
+
+            cameraTarget.x = mesh2.position.x;
+            cameraTarget.z = mesh2.position.z;
+
+            camera.lookAt(cameraTarget);
+
             camera.position.x = zoom * Math.sin(phi) * Math.cos(theta);
             camera.position.y = zoom * Math.cos(phi);
-            camera.position.z = zoom * Math.sin(phi) * Math.sin(theta);
-
-            camera.lookAt(scene.position);
+            camera.position.z = zoom * Math.sin(phi) * Math.sin(theta) + zoomZ;
 
             renderer.render(scene, camera);
 
@@ -115,7 +161,7 @@ export default class CameraRotation extends Component {
         if (!isZooming) {
             this.setState({ isZooming: true, initialDistance: distance });
         } else if (Math.abs(distance - initialDistance) > 5) {
-            this.setState({ zoom: distance > initialDistance ? zoom - 0.1 : zoom + 0.1, initialDistance: distance });
+            this.setState({ zoom: distance > initialDistance ? zoom - 50 : zoom + 50, initialDistance: distance });
         }
     }
 
@@ -131,8 +177,8 @@ export default class CameraRotation extends Component {
                 <Expo.GLView
                     {...this.viewProps}
                     {...this.panResponder.panHandlers}
-                    style           = {Styles.container}
-                    onContextCreate = {this.handleGLContextCreate}
+                    style={Styles.container}
+                    onContextCreate={this.handleGLContextCreate}
                 />
 
                 <View style={Styles.buttonBox}>
